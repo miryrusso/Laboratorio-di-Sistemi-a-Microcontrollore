@@ -1,0 +1,7 @@
+while (!ADC_completed(ADC1)) {}
+		// [0,63] --> [10, 20]
+		new_time = ADC_read(ADC1) / 63.0 * (20 - 10) + 10;
+		
+		
+		
+		ARR = ADCVAL 1000 − 100/255 + 100

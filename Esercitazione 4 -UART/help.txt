@@ -1,0 +1,5 @@
+! Ricorda che la funzione readchar() è bloccante quindi va 
+accoppiata ad un'altra funzione che ci permette di controllare
+gli eventi !
+
+

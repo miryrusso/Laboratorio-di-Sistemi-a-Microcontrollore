@@ -7,7 +7,6 @@ int get_password(char* password){
   int i = 0;
   int same = 1;
   for(;;){
-    if(i > 4 ){return 0;}
     char c = readchar();
     if(c == 8){
       if(i > 0){
@@ -40,10 +39,11 @@ typedef enum{
 }state;
 
 state current_state = DISATTIVAZIONE;
-
+char *password;
 
 void setup(void)
 {
+	password = "1234";
 	//Per display e pulsanti
 	GPIO_init(GPIOB);
 	//Per i led
@@ -99,6 +99,7 @@ void loop(void)
 		case ATTIVAZIONE:
 			//spengo il led verde
 			GPIO_write(GPIOC, 3, 0);
+			printf("Sono in attivazione...\n");
 			//accendo led rosso
 			GPIO_write(GPIOB, 0, 1);
 
@@ -106,11 +107,20 @@ void loop(void)
 		case DISATTIVAZIONE:
 			//setup();
 			//CAMBIO DELLA PASSWORD
-			//printf("Disattivazione\n");
+			printf("Disattivazione\n");
 			GPIO_write(GPIOB, 0, 0);
 			GPIO_write(GPIOC, 2, 0);
 			GPIO_write(GPIOC, 3, 1);
 
+			/*if(get_password("!")){
+				current_state = SETUP;
+			}*/
+			if (kbhit()) {
+				char c = readchar();
+				if(c == '!'){
+					current_state = SETUP;
+				}
+			}
 			break;
 		case PRE_ALLARME:
 		{
@@ -119,7 +129,7 @@ void loop(void)
 			//L'utente avrà 20 secondi per poter inserire la password
 			for(int i = 0; i<3; i++){
 				printf("[PRE_ALLARME] Inserisci la password \n");
-				if(get_password("1234")){
+				if(get_password(password)){
 						current_state = DISATTIVAZIONE;
 						break;
 				}
@@ -137,9 +147,13 @@ void loop(void)
 			//deve lampeggiare il led rosso
 			GPIO_write(GPIOC, 2, 0);
 			printf("Inserisci la password \n");
-			if(get_password("1234")){
+			if(get_password(password)){
 				current_state = DISATTIVAZIONE;
 			}
+
+			break;
+		case SETUP:
+			printf("Scrivi il comando da eseguire :");
 
 			break;
 	}
@@ -151,7 +165,7 @@ void EXTI15_10_IRQHandler(void){
 	if(EXTI_isset(EXTI10)){
 		//richiedere nella UART la password di 4 caratteri numerici
 		printf("Inserisci la password\n");
-		if(get_password("1234")){
+		if(get_password(password)){
 			current_state = PRE_ATTIVAZIONE;
 		}
 		EXTI_clear(EXTI10);
@@ -166,7 +180,7 @@ void EXTI4_IRQHandler(void){
 
 		for(int i = 0; i<3; i++){
 			printf("Inserisci la password per disattivare \n");
-			if(get_password("1234")){
+			if(get_password(password)){
 				current_state = DISATTIVAZIONE;
 				break;
 			}

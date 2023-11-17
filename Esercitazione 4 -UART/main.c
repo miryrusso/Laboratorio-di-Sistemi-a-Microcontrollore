@@ -1,31 +1,36 @@
 #include "stm32_unict_lib.h"
 #include <stdio.h>
-char s[5];
+#include <string.h>
 
+#define MAX_STRING 40
 
-int get_password(char* password){
-  int i = 0;
-  int same = 1;
-  for(;;){
-    char c = readchar();
-    if(c == 8){
-      if(i > 0){
-        --i;
-        __io_putchar(8);
-        __io_putchar(' ');
-        __io_putchar(8);
-      }
-    }else if(c == 13){
-      printf("\n");
-      return same;
-    }else{
-      if(c != password[i]){
-        same = 0;
-      }
-      __io_putchar(c);
-      i++;
-    }
-  }
+void getstring(char * s, int maxlen)
+{
+	int i = 0;
+	for (;;) {
+		char c = readchar();
+		if (c == 13) {
+			printf("\n");
+			s[i] = 0;
+			return;
+		}
+		else if (c == 8) {
+			if (i > 0) {
+				--i;
+				__io_putchar(8); // BS
+				__io_putchar(' '); // SPAZIO
+				__io_putchar(8); // BS
+			}
+		}
+		else if (c >= 32) { // il carattere appartiene al set stampabile
+			if (i < maxlen) {
+				__io_putchar(c); // echo del carattere appena inserito
+				// inserisci il carattere nella stringa
+				s[i] = c;
+				i++;
+			}
+		}
+	}
 }
 
 
@@ -35,19 +40,30 @@ typedef enum{
 	PRE_ALLARME,
 	ALLARME,
 	PRE_ATTIVAZIONE,
-	SETUP
+	SETUP,
+	RICHIESTA
 }state;
 
 state current_state = DISATTIVAZIONE;
-char *password;
+state last_state = DISATTIVAZIONE;
+char *password = NULL;
+char schermetto[5];
+char s[5];
+int out_time = 25;
+int in_time = 100;
 
 void setup(void)
 {
-	password = "1234";
+	//password = "1234";
+	password = (char *)malloc(sizeof(char) * (4 + 1)); // +1 per il terminatore '\0'
+	strcpy(password, "1234");
 	//Per display e pulsanti
 	GPIO_init(GPIOB);
 	//Per i led
 	GPIO_init(GPIOC);
+
+	//Display
+	DISPLAY_init();
 
 
 	//X - Pulsante di attivazione allarme
@@ -92,29 +108,63 @@ void setup(void)
 int count_pre_allarme = 0 ;
 int count_tempo_uscita = 0;
 int count_allarme = 0;
+int count = 0;
 
 void loop(void)
 {
 	switch(current_state){
+		case RICHIESTA:
+		{
+
+
+
+			if(last_state == ATTIVAZIONE){
+				printf("Inserisci la password per disattivare\n");
+			}else{
+				printf("Inserisci la password\n");
+			}
+
+			getstring(s, MAX_STRING);
+			if(!strcmp(s, password)){
+				if(last_state == DISATTIVAZIONE){
+					current_state = PRE_ATTIVAZIONE;
+
+				}else if(last_state == ATTIVAZIONE){
+					current_state = DISATTIVAZIONE;
+				}
+
+			}else{
+				count ++;
+				if(count > 2){
+					current_state = ALLARME;
+				}
+			}
+			last_state = RICHIESTA;
+
+			break;
+
+		}
 		case ATTIVAZIONE:
+			last_state = ATTIVAZIONE;
 			//spengo il led verde
+			sprintf(schermetto, "%4s", "ATT");
+			DISPLAY_puts(0,schermetto);
 			GPIO_write(GPIOC, 3, 0);
-			printf("Sono in attivazione...\n");
+			//printf("Sono in attivazione...\n");
 			//accendo led rosso
 			GPIO_write(GPIOB, 0, 1);
 
 			break;
 		case DISATTIVAZIONE:
+			last_state = DISATTIVAZIONE;
 			//setup();
 			//CAMBIO DELLA PASSWORD
-			printf("Disattivazione\n");
+			sprintf(schermetto, "%4s", "DIS");
+			DISPLAY_puts(0,schermetto);
+			//printf("Disattivazione\n");
 			GPIO_write(GPIOB, 0, 0);
 			GPIO_write(GPIOC, 2, 0);
 			GPIO_write(GPIOC, 3, 1);
-
-			/*if(get_password("!")){
-				current_state = SETUP;
-			}*/
 			if (kbhit()) {
 				char c = readchar();
 				if(c == '!'){
@@ -124,36 +174,74 @@ void loop(void)
 			break;
 		case PRE_ALLARME:
 		{
-			GPIO_write(GPIOC, 3, 0);
+			GPIO_write(GPIOB, 0, 0);
+			last_state = PRE_ALLARME;
+			sprintf(schermetto, "%4s", "PRE");
+			DISPLAY_puts(0,schermetto);
+
 			int count = 0;
-			//L'utente avrà 20 secondi per poter inserire la password
-			for(int i = 0; i<3; i++){
-				printf("[PRE_ALLARME] Inserisci la password \n");
-				if(get_password(password)){
-						current_state = DISATTIVAZIONE;
-						break;
+				if(kbhit()){ //altrimenti getstring resta in loop
+					getstring(s, MAX_STRING);
+									if(!strcmp(password, s)){
+											current_state = DISATTIVAZIONE;
+									}else{
+										count ++;
+										if(count > 3 ){
+											current_state = ALLARME;
+										}
+									}
 				}
-				count ++;
-			}
-
-			if(count >= 3 ){
-				current_state = ALLARME;
-			}
-
 
 			break;
 		}
 		case ALLARME:
+			last_state = ALLARME;
+			char* pipo = "ALL";
+			sprintf(schermetto, "%4s", pipo);
+			DISPLAY_puts(0,schermetto);
 			//deve lampeggiare il led rosso
-			GPIO_write(GPIOC, 2, 0);
+			//GPIO_write(GPIOC, 2, 0);
 			printf("Inserisci la password \n");
-			if(get_password(password)){
+			getstring(s, MAX_STRING);
+			if(!strcmp(password, s)){
 				current_state = DISATTIVAZIONE;
 			}
 
 			break;
 		case SETUP:
-			printf("Scrivi il comando da eseguire :");
+			last_state = SETUP;
+			GPIO_write(GPIOC, 3, 0);
+			printf("Scrivi il comando da eseguire :\n");
+			getstring(s, MAX_STRING);
+
+			if(!strcmp(s, "PASSWORD")){
+				printf("Inserisci la nuova password..\n");
+				for(int i = 0; i<4; i++){
+					char c = readchar();
+					s[i] = c;
+				}
+				printf("[PASSWORD VECCHIA] %s\n", password);
+				strncpy(password, s, strlen(password));
+				printf("[PASSWORD NUOVA] %s \n", password);
+				//current_state = DISATTIVAZIONE;
+
+			}else if(!strcmp(s, "OUT-TIME")){
+
+				printf("Inserisci valore OUT-TIME..\n");
+				getstring(s, MAX_STRING);
+				out_time = atoi(s);
+				printf("Nuovo out-time %d\n", out_time);
+
+			}else if(!strcmp(s, "IN-TIME")){
+				printf("Inserisci valore IN-TIME..\n");
+				getstring(s, MAX_STRING);
+				in_time = atoi(s);
+				printf("Nuovo in-time %d\n", in_time);
+			}
+
+			if(!strcmp(s, "EXIT")){
+				current_state = DISATTIVAZIONE;
+			}
 
 			break;
 	}
@@ -163,11 +251,7 @@ void loop(void)
 //Premo pulsante X
 void EXTI15_10_IRQHandler(void){
 	if(EXTI_isset(EXTI10)){
-		//richiedere nella UART la password di 4 caratteri numerici
-		printf("Inserisci la password\n");
-		if(get_password(password)){
-			current_state = PRE_ATTIVAZIONE;
-		}
+			current_state = RICHIESTA;
 		EXTI_clear(EXTI10);
 	}
 }
@@ -175,23 +259,10 @@ void EXTI15_10_IRQHandler(void){
 //Premo pulsante Y
 void EXTI4_IRQHandler(void){
 	if(EXTI_isset(EXTI4)){
-		int count = 0;
-		//richiedi password e passsa allo stato di disattivazione
-
-		for(int i = 0; i<3; i++){
-			printf("Inserisci la password per disattivare \n");
-			if(get_password(password)){
-				current_state = DISATTIVAZIONE;
-				break;
-			}
-			count ++;
+		if(current_state == ATTIVAZIONE){
+			current_state = RICHIESTA;
 		}
 
-
-		if(count >= 3 ){
-			//aiuto qualcuno sta sbagliando!!!
-			current_state = ALLARME;
-		}
 		EXTI_clear(EXTI4);
 	}
 }
@@ -212,24 +283,23 @@ void TIM2_IRQHandler(void){
 	if(TIM_update_check(TIM2)){
 		switch(current_state){
 			case PRE_ATTIVAZIONE:
-				printf("[TIMER] Pre-attivazione \n");
 				GPIO_toggle(GPIOC, 3);
 				count_tempo_uscita++;
-				if(count_tempo_uscita %25 == 0){
+				if(count_tempo_uscita %out_time == 0){
 					current_state = ATTIVAZIONE;
 				}
 
 
 				break;
 			case PRE_ALLARME:
-				printf("[TIMER] Pre-allarme \n");
 				count_pre_allarme ++;
-				if(count_pre_allarme %100 == 0){
+				if(count_pre_allarme >= in_time){
+					count_pre_allarme = 0;
 					current_state = ALLARME;
 				}
 				break;
 			case ALLARME:
-
+				GPIO_write(GPIOC, 2, 0);
 				GPIO_toggle(GPIOB, 0);
 				break;
 

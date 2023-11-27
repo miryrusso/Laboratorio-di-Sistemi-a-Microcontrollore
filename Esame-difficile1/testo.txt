@@ -1,0 +1,25 @@
+Si consideri un sistema di controllo di un braccio meccanico operante su un piano XY .
+Il sistema deve permettere la movimentazione degli assi verso un punto target impostato
+manualmente; si supponga che la dimensione del piano vada da 0 cm a 99 cm per entrambi gli
+assi.
+Il sistema deve funzionare nel seguente modo:
+• Condizione normale: i valori della posizione attuale degli assi vanno visalizzati sul display
+(prime due cifre per l’asse X e seconde due cifre per l’asse Y);
+• Tasto “X”: il sistema entra in modalità “target” permettendo, tramite AN11 (asse X) e
+AN10 (asse Y) di impostare il punto target; in questa condizione, i valori dei due target
+vanno visalizzati sul display (prime due cifre per l’asse X e seconde due cifre per l’asse
+Y); premendo il tasto “X” nuovamente si avvia il moto, premendo il tasto “Y” si annulla
+l’inserimento e si ritorna in condizione normale;
+• Il moto verso il target deve avvenire ad una velocità v espressa in cm/s (vedi oltre); il
+modo deve arrestarsi quando gli assi sono entro 0.2 cm dalla posizione target specificata;
+il moto deve essere gestito con un timer con granularità di 10 ms;
+• Durante il moto, il LED rosso lampeggia con periodo di 200 ms, il LED giallo si accende
+quando si è entro 5 cm dal target, mentre il LED verde si accende quando si è raggiunto il
+target;
+• Il tasto “Z” permette l’azzeramento degli assi, in questa situazione viene impostato come
+target di default il punto (0, 0) e il moto viene avviato.
+Il tasto “T” permette l’ingresso del sistema nella modalità di configurazione in cui, attraverso
+la UART, è possibile inviare uno dei seguenti comandi:
+• C valore, imposta il nuovo valore velocità v nel range di interi [1, 5] cm/s;
+• EXIT, esce dallo stato di configurazione.
+Come valore iniziale della velocità usare v = 2 cm/s.

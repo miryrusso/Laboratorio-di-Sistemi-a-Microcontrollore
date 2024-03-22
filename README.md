@@ -10,7 +10,7 @@ In questa repository troverete:
 
 - **Risoluzioni di Esami:** Le soluzioni proposte per gli esami del corso. Queste risoluzioni rappresentano una guida e un esempio su come affrontare le sfide degli esami di microcontrollori.
 
-## STM32
+## STM32F4
 
 Tutti i codici presenti in questa repository sono stati scritti e testati su microcontrollori STM32. Assicuratevi di disporre dell'ambiente di sviluppo adatto per compilare e caricare questi programmi sui vostri dispositivi STM32.
 
